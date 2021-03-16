@@ -6,6 +6,7 @@
 //Estructura para las canastas
 typedef struct canasta{
 	int numeros[3500];
+	int noCanasta;
 } CANASTA;
 
 //Hilo de ordenamiento (INSERTION SORT)
@@ -15,15 +16,17 @@ void *ordenamiento(void *arg){
 			k = 0;
 	CANASTA *canastaP;
 	canastaP = (CANASTA *)arg;
+	printf("Ejecutando canasta %d\n", canastaP->noCanasta);
 	for(i=1; i<3500; i++){
-		j = i;
-		while(j>=0 && (canastaP->numeros[j])<(canastaP->numeros[j-1])){
-			k = (canastaP->numeros[j]);
-			(canastaP->numeros[j]) = (canastaP->numeros[j-1]);
-			(canastaP->numeros[j-1]) = k;
-			j--;
+		for(j=0; j<3499; j++){
+			if((canastaP->numeros[j])>(canastaP->numeros[j+1])){
+				k = (canastaP->numeros[j]);
+				(canastaP->numeros[j]) = (canastaP->numeros[j+1]);
+				(canastaP->numeros[j+1]) = k;
+			}
 		}
 	}
+	printf("Finalizando canasta %d\n", canastaP->noCanasta);
 	pthread_exit(NULL);
 }
 
@@ -48,7 +51,7 @@ void escribirArchivo(int numeros[3500], CANASTA *canastas, int noHilos){
   for(i=0; i<noHilos; i++){
   	fprintf(fp,"Números de la canasta %d:\n", i);
   	for(j=0; j<3500; j++){
-			if((*(canastas+i)).numeros[j]!=0){
+			if((*(canastas+i)).numeros[j]!=-1){
 	  			fprintf(fp, "%d\t", (*(canastas+i)).numeros[j]);
 			}
   	}
@@ -70,7 +73,7 @@ void escribirArchivoOrdenado(CANASTA *canastas, int noHilos){
 	for(i=0; i<noHilos; i++){
 		fprintf(fp, "Números de la canasta %d:\n", i);
 		for(j=0; j<3500; j++){
-			if((*(canastas+i)).numeros[j]!=0){
+			if((*(canastas+i)).numeros[j]!=-1){
 				fprintf(fp, "%d\t", (*(canastas+i)).numeros[j]);
 			}
 		}
@@ -107,11 +110,16 @@ int main(void) {
   canastas = (CANASTA *) malloc(noHilos*sizeof(CANASTA));
   contadores = (int *) malloc(noHilos*sizeof(int));
 
+	printf("\n\n");
+
 	//Separa los números en las canastas correspondientes
   for(i=0; i<noHilos; i++){
   	*(contadores+i)=0;
+		(*(canastas+i)).noCanasta=i;
+		printf("Canasta: %d\n", i);
+		printf("rangos %d - %d\n", rangoAnterior, rango);
   	for(j=0; j<3500; j++){
-  	  	(*(canastas+i)).numeros[j]=0;
+  	  	(*(canastas+i)).numeros[j]=-1;
   		if(numeros[j]<rango && numeros[j]>=rangoAnterior){
   			(*(canastas+i)).numeros[(*(contadores+i))]=numeros[j];
   			(*(contadores+i))++;
@@ -121,16 +129,20 @@ int main(void) {
   	rango+=rangoPrincipal;
   }
 
+	printf("\n\n");
+
 	//Imprimimos las canastas
   escribirArchivo(numeros, canastas, noHilos);
 
 	//Generamos los hilos
 	for(i=0; i<noHilos; i++){
+
 		error = pthread_create((hilos+i), NULL, ordenamiento, (canastas+i));
 		if(error){
 			fprintf(stderr,"Error %d\n", error);
 			exit(-1);
 		}
+
 	}
 
 	//Esperamos por la finalización de los hilos
